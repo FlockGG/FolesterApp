@@ -49,7 +49,7 @@ export default function AppShell({ children, onCompose }) {
   const shortWalletAddress = walletAddress ? `${walletAddress.slice(0, 8)}…${walletAddress.slice(-4)}` : ''
   return <div className="app-shell relative z-0 min-h-screen text-slate-100">
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <video autoPlay loop muted playsInline className="w-full h-full object-cover"><source src="https://vmjgttogusschelcplbp.supabase.co/storage/v1/object/public/public-assets/Scene_cropped.mp4" type="video/mp4" /></video>
+      <video autoPlay loop muted playsInline className="h-full w-full object-cover"><source src="https://vmjgttogusschelcplbp.supabase.co/storage/v1/object/public/public-assets/White%20Waves%20-%20Background_1080p.mp4" type="video/mp4" /></video>
       <div className="absolute inset-0 bg-slate-950/50" />
     </div>
     <aside className="fixed inset-y-5 left-5 z-20 hidden w-64 rounded-2xl border border-slate-800 bg-black p-5 shadow-[0_12px_32px_rgba(15,23,42,0.2)] md:flex md:flex-col">
