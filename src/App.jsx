@@ -3,10 +3,12 @@ import { Camera, Coins, Eye, EyeOff, Heart, ImagePlus, LoaderCircle, MessageCirc
 import { Link, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import AppShell from './components/AppShell'
 import Avatar from './components/Avatar'
+import LeaderboardPage from './components/LeaderboardPage'
+import Docs from './components/Docs'
 import ConnectionDialog from './components/ConnectionDialog'
 import { AuthProvider, useAuth } from './context/auth'
 import { DatabaseProvider, useDatabase } from './context/database'
-import { deleteCallout, deletePost, followUser, getCallouts, getFollowSummary, getPosts, getProfile, getUserCallouts, getUserPosts, insertCallout, insertComment, insertPost, saveProfile, searchByHashtag, toggleLike, unfollowUser } from './lib/data'
+import { deleteCallout, deletePost, followUser, getCallouts, getFollowSummary, getPosts, getProfile, getUserCallouts, getUserPosts, insertCallout, insertComment, insertPost, recordTip, saveProfile, searchByHashtag, toggleLike, unfollowUser } from './lib/data'
 import { includesHashtag } from './lib/hashtags'
 import { isVideoUrl, uploadAvatar, uploadMedia, validateMediaFile } from './lib/media'
 import { announceContentCreated, onContentCreated } from './lib/contentEvents'
@@ -296,11 +298,12 @@ function SocialSection({ entity, kind, currentUserId, onChange, variant = 'defau
     {comments.length > 0 && <div className="mt-4 space-y-3 border-t border-white/10 pt-3">{comments.map((item) => <div key={item.id} className="flex gap-2.5"><Link to={`/profile/${item.user_id}`} className="shrink-0 transition hover:opacity-80"><Avatar avatarUrl={item.profiles?.avatar_url} alt={item.profiles?.username || 'Folester member'} /></Link><div className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2"><div className="flex items-center justify-between gap-3"><Link to={`/profile/${item.user_id}`} className="text-xs font-extrabold text-white transition hover:underline">{item.profiles?.username || 'Folester member'}</Link><time className="shrink-0 text-[10px] text-slate-400" dateTime={item.created_at}>{formatDate(item.created_at)}</time></div><p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-300">{item.content}</p></div></div>)}</div>}
     <form onSubmit={handleComment} className="mt-3 flex gap-2"><input ref={commentFieldRef} className="field min-h-11 !border-white/10 !bg-white/10 !py-2 !text-white placeholder:!text-slate-400 text-xs" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} placeholder="Add comment…" aria-label="Add a comment" /><button className="button-secondary shrink-0 !border-white/10 !bg-white/10 !px-3 !py-2 !text-white hover:!bg-white/20" disabled={commenting || !comment.trim()} aria-label="Post comment"><Send size={15} /></button></form>
     {error && <p role="alert" className="mt-2 text-xs font-semibold text-red-400">{error}</p>}
-    {tipOpen && <TipModal recipientAddress={recipientAddress} recipientName={entity.profiles?.username || 'Folester member'} onClose={() => setTipOpen(false)} />}
+    {tipOpen && <TipModal recipientAddress={recipientAddress} recipientName={entity.profiles?.username || 'Folester member'} senderId={currentUserId} receiverId={entity.user_id} onClose={() => setTipOpen(false)} />}
   </section>
 }
 
-function TipModal({ recipientAddress, recipientName, onClose }) {
+function TipModal({ recipientAddress, recipientName, senderId, receiverId, onClose }) {
+  const { client } = useDatabase()
   const [amount, setAmount] = useState('')
   const [error, setError] = useState('')
   const [launching, setLaunching] = useState(false)
@@ -317,7 +320,17 @@ function TipModal({ recipientAddress, recipientName, onClose }) {
     setCopyNotice('')
     setLaunching(true)
     try {
-      await checkoutNimiqPayment({ recipient: recipientAddress, amount })
+      const paymentResult = await checkoutNimiqPayment({ recipient: recipientAddress, amount })
+      // The wallet checkout is authoritative. A leaderboard write must never
+      // make a completed payment appear unsuccessful to the sender.
+      if (senderId !== receiverId) {
+        try {
+          const txHash = paymentResult?.transactionHash || paymentResult?.txHash || paymentResult?.hash || null
+          await recordTip(client, { sender_id: senderId, receiver_id: receiverId, amount: Number(amount), tx_hash: txHash })
+        } catch (recordError) {
+          console.warn('Tip payment completed but could not be recorded.', recordError)
+        }
+      }
       window.alert('Tip sent successfully!')
       onClose()
     } catch (nextError) {
@@ -602,7 +615,7 @@ function ConnectedApp() {
   const [composeOpen, setComposeOpen] = useState(false)
   if (loading) return <main className="flex min-h-screen items-center justify-center gap-2 bg-canvas text-sm font-semibold text-muted"><LoaderCircle size={18} className="animate-spin" />Checking your session…</main>
   if (!user) return <AuthScreen />
-  return <><AppShell onCompose={() => setComposeOpen(true)}><Routes><Route path="/" element={<FeedPage />} /><Route path="/callouts" element={<CalloutsPage />} /><Route path="/profile" element={<ProfilePage />} /><Route path="/profile/:userId" element={<PublicProfilePage />} /><Route path="/search" element={<HashtagSearchPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></AppShell>{composeOpen && <ComposeModal userId={user.id} onClose={() => setComposeOpen(false)} />}</>
+  return <><AppShell onCompose={() => setComposeOpen(true)}><Routes><Route path="/" element={<FeedPage />} /><Route path="/callouts" element={<CalloutsPage />} /><Route path="/leaderboard" element={<LeaderboardPage />} /><Route path="/docs" element={<Docs />} /><Route path="/profile" element={<ProfilePage />} /><Route path="/profile/:userId" element={<PublicProfilePage />} /><Route path="/search" element={<HashtagSearchPage />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes></AppShell>{composeOpen && <ComposeModal userId={user.id} onClose={() => setComposeOpen(false)} />}</>
 }
 
 function Folester() {

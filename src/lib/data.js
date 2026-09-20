@@ -126,3 +126,39 @@ export function saveProfile(client, profile) {
   const { id, ...changes } = profile
   return client.from('profiles').update(changes).eq('id', id).select().single().then(unwrap)
 }
+
+export function recordTip(client, tip) {
+  return client.from('tips').insert(tip).select().single().then(unwrap)
+}
+
+export async function getTipLeaderboard(client, type, limit = 5) {
+  const column = type === 'supporters' || type === 'givers' ? 'sender_id' : 'receiver_id'
+  const tips = await client.from('tips').select(`amount, ${column}`)
+  const rows = unwrap(tips)
+  const totals = rows.reduce((result, tip) => {
+    const id = tip[column]
+    const amount = Number(tip.amount)
+    if (id && Number.isFinite(amount)) result.set(id, (result.get(id) || 0) + amount)
+    return result
+  }, new Map())
+  const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit)
+  if (ranked.length === 0) return []
+  const profiles = await client.from('profiles').select('id, username, avatar_url, nimiq_address').in('id', ranked.map(([id]) => id))
+  const profileById = new Map(unwrap(profiles).map((profile) => [profile.id, profile]))
+  return ranked.map(([id, total]) => ({ id, total, ...profileById.get(id) }))
+}
+
+export async function getTipLeaderboardStats(client) {
+  const response = await client.from('tips').select('amount, receiver_id')
+  const tips = unwrap(response)
+  const totals = tips.reduce((result, tip) => {
+    const amount = Number(tip.amount)
+    if (Number.isFinite(amount)) result.totalNim += amount
+    if (tip.receiver_id && Number.isFinite(amount)) result.byReceiver.set(tip.receiver_id, (result.byReceiver.get(tip.receiver_id) || 0) + amount)
+    return result
+  }, { totalNim: 0, byReceiver: new Map() })
+  const [topResearcher] = [...totals.byReceiver.entries()].sort((a, b) => b[1] - a[1])
+  if (!topResearcher) return { totalNim: totals.totalNim, transactionCount: tips.length, topResearcher: null }
+  const profile = unwrap(await client.from('profiles').select('id, username').eq('id', topResearcher[0]).maybeSingle())
+  return { totalNim: totals.totalNim, transactionCount: tips.length, topResearcher: profile ? { ...profile, total: topResearcher[1] } : null }
+}

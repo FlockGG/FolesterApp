@@ -1,4 +1,4 @@
-import { FileSearch, LoaderCircle, LogOut, MessageCircle, Plus, Search, UserRound, Wallet } from 'lucide-react'
+import { BookOpen, FileSearch, LoaderCircle, LogOut, MessageCircle, Plus, Search, Trophy, UserRound, Wallet } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth'
@@ -7,9 +7,19 @@ import Avatar from './Avatar'
 import { getProfile, saveProfile, searchContent } from '../lib/data'
 import { announceNimiqWalletChange, chooseNimiqAddress, onNimiqWalletChange } from '../lib/nimiqHub'
 import { onAvatarChange } from '../lib/profileEvents'
+import NimiqTicker from './NimiqTicker'
+import OnboardingTour from './OnboardingTour'
 
-function NavItem({ to, icon: Icon, children }) {
-  return <NavLink to={to} end={to === '/'} className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold transition duration-300 ${isActive ? 'border border-gold/45 bg-gold text-slate-950' : 'text-white/75 hover:bg-white/10 hover:text-white'}`}><Icon size={18} strokeWidth={1.8} />{children}</NavLink>
+function NavItem({ to, icon: Icon, children, id }) {
+  return <NavLink id={id} to={to} end={to === '/'} className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold transition duration-300 ${isActive ? 'border border-gold/45 bg-gold text-slate-950' : 'text-white/75 hover:bg-white/10 hover:text-white'}`}><Icon size={18} strokeWidth={1.8} />{children}</NavLink>
+}
+
+function XLogo({ className = '' }) {
+  return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932 6.064-6.932Zm-1.29 19.492h2.039L6.486 3.24H4.298L17.61 20.645Z" /></svg>
+}
+
+function XSocialLink() {
+  return <a href="https://x.com/FolesterX" target="_blank" rel="noopener noreferrer" aria-label="Follow Folester on X" title="Follow Folester on X" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-400 transition duration-300 hover:text-white"><XLogo className="h-4 w-4" /></a>
 }
 
 export default function AppShell({ children, onCompose }) {
@@ -53,13 +63,18 @@ export default function AppShell({ children, onCompose }) {
       <div className="absolute inset-0 bg-slate-950/50" />
     </div>
     <aside className="fixed inset-y-5 left-5 z-20 hidden w-64 rounded-2xl border border-slate-800 bg-black p-5 shadow-[0_12px_32px_rgba(15,23,42,0.2)] md:flex md:flex-col">
-      <NavLink to="/" className="mb-10 flex items-center gap-2.5 px-2">
-        <img src="/folester-profile.png" alt="Folester" className="h-9 w-9 rounded-xl border border-white/20 object-cover" />
-        <span className="text-lg font-extrabold tracking-tight text-white">Folester</span>
-      </NavLink>
+      <div className="mb-10 flex items-center gap-1 px-2">
+        <NavLink to="/" className="flex items-center gap-2.5">
+          <img src="/folester-profile.png" alt="Folester" className="h-9 w-9 rounded-xl border border-white/20 object-cover" />
+          <span className="text-lg font-extrabold tracking-tight text-white">Folester</span>
+        </NavLink>
+        <XSocialLink />
+      </div>
       <nav className="space-y-1">
-        <NavItem to="/" icon={MessageCircle}>Feed</NavItem>
+        <NavItem to="/" icon={MessageCircle} id="tour-feed-nav">Feed</NavItem>
         <NavItem to="/callouts" icon={FileSearch}>Callouts</NavItem>
+        <NavItem to="/leaderboard" icon={Trophy} id="tour-leaderboard-nav">Leaderboard</NavItem>
+        <NavItem to="/docs" icon={BookOpen} id="tour-docs-nav">Docs</NavItem>
         <NavItem to="/profile" icon={UserRound}>Profile</NavItem>
       </nav>
       <div className="mt-auto border-t border-white/15 pt-4">
@@ -72,18 +87,22 @@ export default function AppShell({ children, onCompose }) {
     </aside>
     <main className="relative z-10 pb-28 md:ml-[18rem] md:pb-10">
       <header className="sticky top-0 z-10 mx-4 mt-4 flex h-16 items-center gap-3 rounded-2xl border border-slate-800 bg-black px-4 sm:mx-8 sm:px-6 md:mx-10">
-        <NavLink to="/" className="flex shrink-0 items-center gap-2 md:hidden"><img src="/folester-profile.png" alt="Folester" className="h-9 w-9 rounded-xl border border-slate-800 object-cover" /><span className="hidden font-extrabold tracking-tight text-white min-[430px]:inline">Folester</span></NavLink>
+        <div className="flex shrink-0 items-center gap-1 md:hidden"><NavLink to="/" className="flex items-center gap-2"><img src="/folester-profile.png" alt="Folester" className="h-9 w-9 rounded-xl border border-slate-800 object-cover" /><span className="hidden font-extrabold tracking-tight text-white min-[430px]:inline">Folester</span></NavLink><XSocialLink /></div>
         <GlobalSearch />
-        <button onClick={connectNimiqWallet} disabled={walletConnecting} className="shrink-0 rounded-xl bg-black px-2.5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-55 sm:px-4" type="button" title={walletError || (walletAddress ? `Connected: ${walletAddress}` : 'Connect your Nimiq wallet')}><Wallet size={16} className="inline text-gold" /><span className="ml-2 hidden sm:inline">{walletConnecting ? 'Connecting…' : walletAddress ? shortWalletAddress : 'Connect Nimiq'}</span><span className="ml-2 sm:hidden">{walletConnecting ? 'Connecting…' : walletAddress ? 'Connected' : 'Connect'}</span></button>
+        <NimiqTicker />
+        <button id="tour-connect-wallet" onClick={connectNimiqWallet} disabled={walletConnecting} className="shrink-0 rounded-xl bg-black px-2.5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-55 sm:px-4" type="button" title={walletError || (walletAddress ? `Connected: ${walletAddress}` : 'Connect your Nimiq wallet')}><Wallet size={16} className="inline text-gold" /><span className="ml-2 hidden sm:inline">{walletConnecting ? 'Connecting…' : walletAddress ? shortWalletAddress : 'Connect Nimiq'}</span><span className="ml-2 sm:hidden">{walletConnecting ? 'Connecting…' : walletAddress ? 'Connected' : 'Connect'}</span></button>
       </header>
       {children}
     </main>
     <nav className="fixed inset-x-4 bottom-4 z-30 flex h-[66px] items-center justify-around rounded-full border border-slate-800 bg-black px-3 shadow-lg shadow-slate-900/30 md:hidden">
-      <NavLink to="/" end className={({ isActive }) => `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full text-[10px] font-bold transition duration-300 ${isActive ? 'bg-gold text-slate-950' : 'text-white/70'}`}><MessageCircle size={18} strokeWidth={1.8} />Feed</NavLink>
+      <NavLink id="tour-feed-nav-mobile" to="/" end className={({ isActive }) => `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full text-[10px] font-bold transition duration-300 ${isActive ? 'bg-gold text-slate-950' : 'text-white/70'}`}><MessageCircle size={18} strokeWidth={1.8} />Feed</NavLink>
       <NavLink to="/callouts" className={({ isActive }) => `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full text-[10px] font-bold transition duration-300 ${isActive ? 'bg-gold text-slate-950' : 'text-white/70'}`}><FileSearch size={18} strokeWidth={1.8} />Callouts</NavLink>
+      <NavLink id="tour-leaderboard-nav-mobile" to="/leaderboard" className={({ isActive }) => `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full text-[10px] font-bold transition duration-300 ${isActive ? 'bg-gold text-slate-950' : 'text-white/70'}`}><Trophy size={18} strokeWidth={1.8} />Ranks</NavLink>
+      <NavLink id="tour-docs-nav-mobile" to="/docs" className={({ isActive }) => `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full text-[10px] font-bold transition duration-300 ${isActive ? 'bg-gold text-slate-950' : 'text-white/70'}`}><BookOpen size={18} strokeWidth={1.8} />Docs</NavLink>
       <NavLink to="/profile" className={({ isActive }) => `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-full text-[10px] font-bold transition duration-300 ${isActive ? 'bg-gold text-slate-950' : 'text-white/70'}`}><UserRound size={18} strokeWidth={1.8} />Profile</NavLink>
     </nav>
     <button type="button" onClick={onCompose} className="fixed bottom-24 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#c8952d] bg-gold text-[#201605] shadow-[0_12px_28px_rgba(224,177,66,0.35)] transition hover:-translate-y-1 hover:bg-[#e6ba50] md:bottom-7 md:right-8" aria-label="Compose"><Plus size={25} strokeWidth={2.4} /></button>
+    <OnboardingTour userId={user.id} />
   </div>
 }
 
